@@ -21,7 +21,9 @@ const isSequence = (element, byteStream) => {
     // These are the tags that could potentially be found directly after a sequence start tag (the delimiter
     // is found in the case of an empty sequence). This is not 100% safe because a non-sequence item
     // could have data that has these bytes, but this is how to do it without a data dictionary.
-    return (nextTag === 'xfffee000') || (nextTag === 'xfffee0dd');
+    // If the element is explicitly zero length then it can't be a sequence and followed by either of these tags; in that
+    // case, the tags must belong to an outer item or sequence, so return false.
+    return (element.length !== 0) && ((nextTag === 'xfffee000') || (nextTag === 'xfffee0dd'));
   }
 
   byteStream.warnings.push('eof encountered before finding sequence item tag or sequence delimiter tag in peeking to determine VR');

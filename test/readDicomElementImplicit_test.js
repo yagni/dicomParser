@@ -82,7 +82,7 @@ describe('readDicomElementImplicit', () => {
     expect(byteStream.warnings.length).to.equal(1);
   });
 
-  it('item tag successfully defines implicit SQ without callback (using peeking)', () => {
+  it('item tag successfully defines implicit VR SQ with defined length without callback (using peeking)', () => {
     // Arrange
     // (0008,0006)                              18
     const bytes = [0x08, 0x00, 0x06, 0x00, 0x12, 0x00, 0x00, 0x00,
@@ -127,6 +127,48 @@ describe('readDicomElementImplicit', () => {
     expect(element.items).to.deep.equal([]);
   });
 
+  it('a zero-length element at the end of a defined-length sequence item having a next sequence item must not be detected as a sequence when not using a callback', () => {
+    // Arrange
+    // (0008,0006)                                            24
+    const bytes = [0x08, 0x00, 0x06, 0x00, 0x18, 0x00, 0x00, 0x00,
+      // (fffe,e000)                               0
+      0xfe, 0xff, 0x00, 0xe0, 0x0A, 0x00, 0x00, 0x00,
+      // (0008,0100)                               0
+      0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+      // (fffe,e000)                               0
+      0xfe, 0xff, 0x00, 0xe0, 0x00, 0x00, 0x00, 0x00,
+    ];
+
+    const byteStream = new ByteStream(littleEndianByteArrayParser, convertToByteArray(bytes));
+
+    // Act
+    const element = readDicomElementImplicit(byteStream);
+
+    // Assert
+    expect(element.items[0].dataSet.elements['x00080100'].items).to.equal(undefined);
+  });
+
+  it('a zero-length last element of the last sequence item of a sequence of undefined length must not be detected as a sequence when not using a callback', () => {
+    // Arrange
+    // (0008,0006)               (undefined length)
+    const bytes = [0x08, 0x00, 0x06, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+      // (fffe,e000)                               0
+      0xfe, 0xff, 0x00, 0xe0, 0x08, 0x00, 0x00, 0x00,
+      // (0008,0100)                               0
+      0x08, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+      // (fffe,e0dd)                               0
+      0xfe, 0xff, 0xdd, 0xe0, 0x00, 0x00, 0x00, 0x00,
+    ];
+    
+      const byteStream = new ByteStream(littleEndianByteArrayParser, convertToByteArray(bytes));
+
+      // Act
+      const element = readDicomElementImplicit(byteStream);
+
+      // Assert
+      expect(element.items[0].dataSet.elements['x00080100'].items).to.equal(undefined);
+    });
+  
   it('bytes resembling an item tag look like an implicit SQ item when not using a callback', () => {
     // Arrange
     // (7fe0,0010)                               8
